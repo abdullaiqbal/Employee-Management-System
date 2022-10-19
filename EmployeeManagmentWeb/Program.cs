@@ -17,6 +17,7 @@ builder.Services.AddMvc(config =>
                     .RequireAuthenticatedUser()
                     .Build();
     config.Filters.Add(new AuthorizeFilter(policy));
+       
 });
 
 var app = builder.Build();
