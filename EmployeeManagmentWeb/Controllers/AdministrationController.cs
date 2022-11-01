@@ -1,13 +1,16 @@
-﻿using EmployeeManagmentWeb.Models;
+﻿using ContosoUniversity;
+using EmployeeManagmentWeb.Models;
 using EmployeeManagmentWeb.Models.ViewModel;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
 using System.Security.Claims;
 
 namespace EmployeeManagmentWeb.Controllers
 {
-    [Authorize(Roles = "Admin")]
+    //[Authorize(Roles = "Admin")]
+    //[Authorize(Policy = "SuperAdminPolicy")]
     public class AdministrationController : Controller
     {
         private readonly RoleManager<IdentityRole> roleManager;
@@ -19,11 +22,13 @@ namespace EmployeeManagmentWeb.Controllers
             this.userManager = userManager;
         }
         [HttpGet]
+        [Authorize(Policy = "SuperAdminPolicy")]
         public IActionResult CreateRole()
         {
             return View();
         }
         [HttpPost]
+        [Authorize(Policy = "SuperAdminPolicy")]
         public async Task<IActionResult> CreateRole(CreateRoleViewModel model)
 
         {
@@ -41,16 +46,50 @@ namespace EmployeeManagmentWeb.Controllers
             return View(model);
         }
 
-        [HttpGet]
-        public IActionResult ListRoles()
-        {
-            var roles = roleManager.Roles;
-            return View(roles);
-        }
 
+
+        //[HttpGet]
+        //[Authorize(Policy = "SuperAdminPolicy")]
+        //public IActionResult ListRoles()
+        //{
+
+        //    var roles = roleManager.Roles;
+        //    return View(roles);
+        //}
+
+
+        [HttpGet]
+        [Authorize(Policy = "SuperAdminPolicy")]
+        public async Task<IActionResult> ListRoles(string sortOrder, string searchString, string currentFilter, int? pageNumber)
+        {
+            ViewData["NameSortParm"] = String.IsNullOrEmpty(sortOrder) ? "name_desc" : "";
+            ViewData["CurrentFilter"] = searchString;
+            var roles = roleManager.Roles;
+            if (!String.IsNullOrEmpty(searchString))
+            {
+                roles = roles.Where(r => r.Name.Contains(searchString));
+            }
+            else
+            {
+                searchString = currentFilter;
+            }
+            switch (sortOrder)
+            {
+                case "name_desc":
+                    roles = roles.OrderByDescending(r => r.Name);
+                    break;
+                default:
+                    roles = roles.OrderBy(r => r.Name);
+                    break;
+            }
+            int pageSize = 3;
+            return View(await PaginatedList<IdentityRole>.CreateAsync(roles, pageNumber ?? 1, pageSize));
+            //return View(roles);
+        }
 
         // Role ID is passed from the URL to the action
         [HttpGet]
+        [Authorize(Policy = "SuperAdminPolicy")]
         public async Task<IActionResult> EditRole(string id)
         {
             // Find the role by Role ID
@@ -85,6 +124,7 @@ namespace EmployeeManagmentWeb.Controllers
 
         // This action responds to HttpPost and receives EditRoleViewModel
         [HttpPost]
+        [Authorize(Policy = "SuperAdminPolicy")]
         public async Task<IActionResult> EditRole(EditRoleViewModel model)
         {
             var role = await roleManager.FindByIdAsync(model.Id);
@@ -116,6 +156,7 @@ namespace EmployeeManagmentWeb.Controllers
         }
 
         [HttpGet]
+        [Authorize(Policy = "SuperAdminPolicy")]
         public async Task<IActionResult> EditUsersInRole(string roleId)
         {
             ViewBag.roleId = roleId;
@@ -155,6 +196,7 @@ namespace EmployeeManagmentWeb.Controllers
 
 
         [HttpPost]
+        [Authorize(Policy = "SuperAdminPolicy")]
         public async Task<IActionResult> EditUsersInRole(List<UserRoleViewModel> model, string roleId)
         {
             var role = await roleManager.FindByIdAsync(roleId);
@@ -197,12 +239,17 @@ namespace EmployeeManagmentWeb.Controllers
         }
 
         [HttpGet]
+        //[Authorize(Policy = "SuperAdminPolicy")]
+        [Authorize(Policy = "AdminSuperAdminPolicy")]
+        //[Authorize(Policy = "EditUserPolicy")]
         public IActionResult ListUsers()
         {
             var users = userManager.Users;
             return View(users);
         }
         [HttpGet]
+        //[Authorize(Policy = "AdminSuperAdminPolicy")]
+        [Authorize(Policy = "EditUserPolicy")]
         public async Task<IActionResult> EditUser(string id)
         {
             var user = await userManager.FindByIdAsync(id);
@@ -224,13 +271,15 @@ namespace EmployeeManagmentWeb.Controllers
                 Email = user.Email,
                 UserName = user.UserName,
                 City = user.City,
-                Claims = userClaims.Select(c => c.Value).ToList(),
+                Claims = userClaims.Select(c => c.Type + ":" + c.Value).ToList(),
                 Roles = userRoles
             };
 
             return View(model);
         }
         [HttpPost]
+        //[Authorize(Policy = "AdminSuperAdminPolicy")]
+        [Authorize(Policy = "EditUserPolicy")]
         public async Task<IActionResult> EditUser(EditUserViewModel model)
         {
             var user = await userManager.FindByIdAsync(model.Id);
@@ -263,6 +312,7 @@ namespace EmployeeManagmentWeb.Controllers
         }
 
         [HttpPost]
+        [Authorize(Policy = "SuperAdminPolicy")]
         public async Task<IActionResult> DeleteUser(string id)
         {
             var user = await userManager.FindByIdAsync(id);
@@ -291,6 +341,8 @@ namespace EmployeeManagmentWeb.Controllers
         }
 
         [HttpPost]
+        [Authorize(Policy = "SuperAdminPolicy")]
+        [Authorize(Policy = "DeleteRolePolicy")]
         public async Task<IActionResult> DeleteRole(string id)
         {
             var role = await roleManager.FindByIdAsync(id);
@@ -318,6 +370,7 @@ namespace EmployeeManagmentWeb.Controllers
             }
         }
         [HttpGet]
+        [Authorize(Policy = "SuperAdminPolicy")]
         public async Task<IActionResult> ManageUserRoles(string userId)
         {
             ViewBag.userId = userId;
@@ -355,8 +408,8 @@ namespace EmployeeManagmentWeb.Controllers
             return View(model);
         }
         [HttpPost]
-        public async Task<IActionResult>
-    ManageUserRoles(List<UserRolesViewModel> model, string userId)
+        [Authorize(Policy = "SuperAdminPolicy")]
+        public async Task<IActionResult> ManageUserRoles(List<UserRolesViewModel> model, string userId)
         {
             var user = await userManager.FindByIdAsync(userId);
 
@@ -388,6 +441,7 @@ namespace EmployeeManagmentWeb.Controllers
         }
 
         [HttpGet]
+        [Authorize(Policy = "SuperAdminPolicy")]
         public async Task<IActionResult> ManageUserClaims(string userId)
         {
             var user = await userManager.FindByIdAsync(userId);
@@ -416,7 +470,7 @@ namespace EmployeeManagmentWeb.Controllers
 
                 // If the user has the claim, set IsSelected property to true, so the checkbox
                 // next to the claim is checked on the UI
-                if (existingUserClaims.Any(c => c.Type == claim.Type))
+                if (existingUserClaims.Any(c => c.Type == claim.Type && claim.Value=="true"))
                 {
                     userClaim.IsSelected = true;
                 }
@@ -428,6 +482,7 @@ namespace EmployeeManagmentWeb.Controllers
 
         }
         [HttpPost]
+        [Authorize(Policy = "SuperAdminPolicy")]
         public async Task<IActionResult> ManageUserClaims(UserClaimsViewModel model)
         {
             var user = await userManager.FindByIdAsync(model.UserId);
@@ -450,8 +505,8 @@ namespace EmployeeManagmentWeb.Controllers
 
             // Add all the claims that are selected on the UI
             result = await userManager.AddClaimsAsync(user,
-                model.Cliams.Where(c => c.IsSelected).Select(c => new Claim(c.ClaimType, c.ClaimType)));
-
+                model.Cliams.Select(c => new Claim(c.ClaimType, c.IsSelected?"true":"false")));
+            //.Where(c => c.IsSelected)
             if (!result.Succeeded)
             {
                 ModelState.AddModelError("", "Cannot add selected claims to user");

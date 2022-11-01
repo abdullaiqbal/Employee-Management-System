@@ -1,5 +1,8 @@
 ﻿
 @inject SignInManager<ApplicationUser> signInManager;
+@using Microsoft.AspNetCore.Authorization
+@inject IAuthorizationService authorizationService;
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -30,7 +33,8 @@
                         <li class="nav-item">
                             <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
                         </li>
-                        @if (signInManager.IsSignedIn(User) && User.IsInRole("Admin"))
+                       @* @if (signInManager.IsSignedIn(User) && User.IsInRole("Super Admin"))*@
+                        @if ((await authorizationService.AuthorizeAsync(User, "SuperAdminPolicy")).Succeeded)
                         {
                        @*     <li class="nav-item dropdown">
                                 <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownMenuLink"
@@ -52,6 +56,22 @@
                                 <a class="nav-link text-dark" asp-controller="Administration"
                                asp-action="ListRoles">Roles</a>
                             </li>
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-controller="Account"
+                                    asp-action="ChangePassword">
+                                    Password
+                                </a>
+                            </li>
+                        }
+                        @*@if (signInManager.IsSignedIn(User) && User.IsInRole("Admin"))*@
+                        @if ((await authorizationService.AuthorizeAsync(User, "AdminRolePolicy")).Succeeded)
+                        {
+                           
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-controller="Administration"
+                               asp-action="ListUsers">Users</a>
+                            </li>
+                            
                         }
                     </ul>
                     <ul class="navbar-nav flex-grow-1 ml-auto">

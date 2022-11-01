@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using Microsoft.AspNetCore.Authentication;
+using System.ComponentModel.DataAnnotations;
 using System.Xml.Linq;
 
 namespace EmployeeManagmentWeb.Models.ViewModel
@@ -14,5 +15,9 @@ namespace EmployeeManagmentWeb.Models.ViewModel
 
         [Display(Name = "Remember Me")]
         public bool RememberMe { get; set; }
+        public string? ReturnUrl { get; set; }
+
+        // AuthenticationScheme is in Microsoft.AspNetCore.Authentication namespace
+        public IList<AuthenticationScheme>? ExternalLogins { get; set; }
     }
 }
